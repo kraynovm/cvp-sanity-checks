@@ -43,11 +43,10 @@ def init_salt_client():
     return local
 
 
-def list_to_target_string(node_list, separator):
-    result = ''
-    for node in node_list:
-        result += node + ' ' + separator + ' '
-    return result[:-(len(separator)+2)]
+def list_to_target_string(node_list, separator, add_spaces=True):
+    if add_spaces:
+        separator = ' ' + separator.strip() + ' '
+    return separator.join(node_list)
 
 
 def get_monitoring_ip(param_name):
