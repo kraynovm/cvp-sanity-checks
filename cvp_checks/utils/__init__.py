@@ -5,6 +5,10 @@ import re
 import sys, traceback
 
 
+class AuthenticationError(Exception):
+    pass
+
+
 class salt_remote:
     def cmd(self, tgt, fun, param=None, expr_form=None, tgt_type=None):
         config = get_configuration()
@@ -23,17 +27,31 @@ class salt_remote:
             login_request = requests.post(os.path.join(url, 'login'),
                                           headers=headers, data=login_payload,
                                           proxies=proxies)
-            if login_request.ok:
-                request = requests.post(url, headers=headers,
-                                        data=accept_key_payload,
-                                        cookies=login_request.cookies,
-                                        proxies=proxies)
-                return request.json()['return'][0]
-        except Exception:
-            print "\033[91m\nConnection to SaltMaster " \
-                  "was not established.\n" \
-                  "Please make sure that you " \
-                  "provided correct credentials.\033[0m\n"
+            if not login_request.ok:
+                raise AuthenticationError("Authentication to SaltMaster failed")
+
+            request = requests.post(url, headers=headers,
+                                    data=accept_key_payload,
+                                    cookies=login_request.cookies,
+                                    proxies=proxies)
+
+            response = request.json()['return'][0]
+            not_responded = [k for k,v in response.iteritems() if v is False]
+            if not_responded:
+                print ("WARNING: Some nodes are unavailable and removed "
+                      "from response: {}".format(', '.join(not_responded))
+                )
+            for node in not_responded:
+                del response[node]
+            return response
+
+        except Exception as e:
+            print ("\033[91m\nConnection to SaltMaster "
+                  "was not established.\n"
+                  "Please make sure that you "
+                  "provided correct credentials.\n"
+                  "Error message: {}\033[0m\n".format(e.message or e)
+            )
             traceback.print_exc(file=sys.stdout)
             sys.exit()
 
