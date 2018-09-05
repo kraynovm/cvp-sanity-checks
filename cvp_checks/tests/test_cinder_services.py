@@ -8,7 +8,8 @@ def test_cinder_services(local_salt_client):
         ['cinder:controller:backend'],
         expr_form='pillar')
     if not cinder_backends_info:
-        pytest.skip("Cinder is not found on this environment")
+        pytest.skip("Cinder service or cinder:controller pillar \
+        are not found on this environment.")
     service_down = local_salt_client.cmd(
         'keystone:server',
         'cmd.run',
