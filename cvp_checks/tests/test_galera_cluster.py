@@ -9,7 +9,8 @@ def test_galera_cluster_status(local_salt_client):
         expr_form='pillar')
 
     if not gs:
-        pytest.skip("Galera is not found on this environment")
+        pytest.skip("Galera service or galera:* pillar \
+        are not found on this environment.")
 
     size_cluster = []
     amount = len(gs)
