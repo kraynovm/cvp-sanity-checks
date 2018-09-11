@@ -57,7 +57,7 @@ def test_ui_alert_manager(local_salt_client):
 
 
 def test_ui_grafana(local_salt_client):
-    IP = utils.get_monitoring_ip('cluster_public_host')
+    IP = utils.get_monitoring_ip('stacklight_monitor_address')
     result = local_salt_client.cmd(
         'keystone:server',
         'cmd.run',
