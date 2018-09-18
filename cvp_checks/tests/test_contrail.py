@@ -4,7 +4,7 @@ import json
 pytestmark = pytest.mark.usefixtures("contrail")
 
 STATUS_FILTER = r'grep -Pv "(==|^$|Disk|unix|support|boot|\*\*|FOR NODE)"'
-STATUS_COMMAND = "contrail-status"
+STATUS_COMMAND = "contrail-status -t 10"
 
 def get_contrail_status(salt_client, pillar, command, processor):
     return salt_client.cmd(
