@@ -12,7 +12,10 @@ class AuthenticationError(Exception):
 class salt_remote:
     def cmd(self, tgt, fun, param=None, expr_form=None, tgt_type=None):
         config = get_configuration()
-        url = config['SALT_URL']
+        url = config['SALT_URL'].strip()
+        if not re.match("^(http|https)://", url):
+            raise AuthenticationError("Salt URL should start \
+            with http or https, given - {}".format(url))
         proxies = {"http": None, "https": None}
         headers = {'Accept': 'application/json'}
         login_payload = {'username': config['SALT_USERNAME'],
