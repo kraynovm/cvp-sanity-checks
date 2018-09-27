@@ -8,6 +8,8 @@ import os
 from pygerrit2 import GerritRestAPI, HTTPBasicAuth
 from requests import HTTPError
 import git
+import ldap
+import ldap.modlist as modlist
 
 def join_to_gerrit(local_salt_client, gerrit_user, gerrit_password):
     gerrit_port = local_salt_client.cmd(
@@ -107,6 +109,105 @@ def test_drivetrain_gerrit(local_salt_client):
     assert gerrit_error == '',\
         'Something is wrong with Gerrit'.format(gerrit_error)
 
+def test_drivetrain_openldap(local_salt_client):
+    '''Create a test user 'DT_test_user' in openldap,
+    add the user to admin group, login using the user to Jenkins.
+    Add the user to devops group in Gerrit and then login to Gerrit,
+    using test_user credentials. Finally, delete the user from admin
+    group and openldap
+    '''
+    ldap_password = get_password(local_salt_client,'openldap:client')
+    #Check that ldap_password is exists, otherwise skip test
+    if not ldap_password:
+        pytest.skip("Openldap service or openldap:client pillar \
+        are not found on this environment.")
+    ldap_port = local_salt_client.cmd(
+        'I@openldap:client and not I@salt:master',
+        'pillar.get',
+        ['_param:haproxy_openldap_bind_port'],
+        expr_form='compound').values()[0]
+    ldap_address = local_salt_client.cmd(
+        'I@openldap:client and not I@salt:master',
+        'pillar.get',
+        ['_param:haproxy_openldap_bind_host'],
+        expr_form='compound').values()[0]
+    ldap_dc = local_salt_client.cmd(
+        'openldap:client',
+        'pillar.get',
+        ['_param:openldap_dn'],
+        expr_form='pillar').values()[0]
+    ldap_con_admin = local_salt_client.cmd(
+        'openldap:client',
+        'pillar.get',
+        ['openldap:client:server:auth:user'],
+        expr_form='pillar').values()[0]
+    ldap_url = 'ldap://{0}:{1}'.format(ldap_address,ldap_port)
+    ldap_error = ''
+    ldap_result = ''
+    gerrit_result = ''
+    gerrit_error = ''
+    jenkins_error = ''
+    #Test user's CN
+    test_user_name = 'DT_test_user'
+    test_user = 'cn={0},ou=people,{1}'.format(test_user_name,ldap_dc)
+    #Admins group CN
+    admin_gr_dn = 'cn=admins,ou=groups,{0}'.format(ldap_dc)
+    #List of attributes for test user
+    attrs = {}
+    attrs['objectclass'] = ['organizationalRole','simpleSecurityObject','shadowAccount']
+    attrs['cn'] = test_user_name
+    attrs['uid'] = test_user_name
+    attrs['userPassword'] = 'aSecretPassw'
+    attrs['description'] = 'Test user for CVP DT test'
+    searchFilter = 'cn={0}'.format(test_user_name)
+    #Get a test job name from config
+    config = utils.get_configuration()
+    jenkins_test_job = config['jenkins_test_job']
+    if not jenkins_test_job or jenkins_test_job == '':
+        jenkins_test_job = 'git-mirror-downstream-pipeline-library'
+    #Open connection to ldap and creating test user in admins group
+    try:
+        ldap_server = ldap.initialize(ldap_url)
+        ldap_server.simple_bind_s(ldap_con_admin,ldap_password)
+        ldif = modlist.addModlist(attrs)
+        ldap_server.add_s(test_user,ldif)
+        ldap_server.modify_s(admin_gr_dn,[(ldap.MOD_ADD, 'memberUid', [test_user_name],)],)
+        #Check search test user in LDAP
+        searchScope = ldap.SCOPE_SUBTREE
+        ldap_result = ldap_server.search_s(ldap_dc, searchScope, searchFilter)
+    except ldap.LDAPError, e:
+        ldap_error = e
+    try:
+        #Check connection between Jenkins and LDAP
+        jenkins_server = join_to_jenkins(local_salt_client,test_user_name,'aSecretPassw')
+        jenkins_version = jenkins_server.get_job_name(jenkins_test_job)
+        #Check connection between Gerrit and LDAP
+        gerrit_server = join_to_gerrit(local_salt_client,'admin',ldap_password)
+        gerrit_check = gerrit_server.get("/changes/?q=owner:self%20status:open")
+        #Add test user to devops-contrib group in Gerrit and check login
+        _link = "/groups/devops-contrib/members/{0}".format(test_user_name)
+        gerrit_add_user = gerrit_server.put(_link)
+        gerrit_server = join_to_gerrit(local_salt_client,test_user_name,'aSecretPassw')
+        gerrit_result = gerrit_server.get("/changes/?q=owner:self%20status:open")
+    except HTTPError, e:
+        gerrit_error = e
+    except jenkins.JenkinsException, e:
+        jenkins_error = e
+    finally:
+        ldap_server.modify_s(admin_gr_dn,[(ldap.MOD_DELETE, 'memberUid', [test_user_name],)],)
+        ldap_server.delete_s(test_user)
+        ldap_server.unbind_s()
+    assert ldap_error == '', \
+        '''Something is wrong with connection to LDAP:
+            {0}'''.format(e)
+    assert jenkins_error == '', \
+        '''Connection to Jenkins was not established:
+            {0}'''.format(e)
+    assert gerrit_error == '', \
+        '''Connection to Gerrit was not established:
+            {0}'''.format(e)
+    assert ldap_result !=[], \
+        '''Test user was not found'''
 
 def test_drivetrain_jenkins_job(local_salt_client):
     jenkins_password = get_password(local_salt_client,'jenkins:client')

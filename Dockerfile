@@ -9,7 +9,7 @@ RUN mkdir -p cvp-sanity-checks/
 COPY . cvp-sanity-checks/
 
 RUN apt-get update && \
-    apt-get install -y python-pip git curl wget vim inetutils-ping && \
+    apt-get install -y python-pip git curl wget vim inetutils-ping libsasl2-dev python-dev libldap2-dev libssl-dev && \
     python -m pip install --upgrade pip && \
     pip install -r cvp-sanity-checks/requirements.txt && \
     apt-get -y autoremove; apt-get -y clean
