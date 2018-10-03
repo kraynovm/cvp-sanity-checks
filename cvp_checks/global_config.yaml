@@ -66,6 +66,7 @@ test_mtu:
 # mask for interfaces to skip
 
 drivetrain_version: ''
+jenkins_test_job: ''
 
 # ntp test setting
 # this test may skip specific node (use fqdn)
