@@ -1,5 +1,7 @@
 pytest==3.0.6
-requests
+requests==2.10.0
 flake8
 PyYAML
 python-jenkins==0.4.11
+pygerrit2==2.0.6
+gitpython
