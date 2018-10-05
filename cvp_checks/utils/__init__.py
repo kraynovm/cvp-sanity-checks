@@ -73,7 +73,7 @@ def list_to_target_string(node_list, separator, add_spaces=True):
 def get_monitoring_ip(param_name):
     local_salt_client = init_salt_client()
     salt_output = local_salt_client.cmd(
-        'docker:client:stack:monitoring',
+        'salt:master',
         'pillar.get',
         ['_param:{}'.format(param_name)],
         expr_form='pillar')

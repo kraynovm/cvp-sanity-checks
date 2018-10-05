@@ -5,16 +5,13 @@ import pytest
 from cvp_checks import utils
 
 
+@pytest.mark.usefixtures('check_kibana')
 def test_elasticsearch_cluster(local_salt_client):
     salt_output = local_salt_client.cmd(
         'kibana:server',
         'pillar.get',
         ['_param:haproxy_elasticsearch_bind_host'],
         expr_form='pillar')
-
-    if not salt_output:
-        pytest.skip("Kibana service or kibana:server pillar \
-        are not found on this environment.")
 
     proxies = {"http": None, "https": None}
     for node in salt_output.keys():
@@ -41,6 +38,7 @@ def test_elasticsearch_cluster(local_salt_client):
             json.dumps(resp, indent=4))
 
 
+@pytest.mark.usefixtures('check_kibana')
 def test_elasticsearch_node_count(local_salt_client):
     now = datetime.datetime.now()
     today = now.strftime("%Y.%m.%d")
@@ -50,10 +48,6 @@ def test_elasticsearch_node_count(local_salt_client):
         'pillar.get',
         ['_param:haproxy_elasticsearch_bind_host'],
         expr_form='pillar')
-
-    if not salt_output:
-        pytest.skip("Kibana service or kibana:server pillar \
-        are not found on this environment.")
 
     IP = salt_output.values()[0]
     proxies = {"http": None, "https": None}
@@ -83,16 +77,17 @@ def test_elasticsearch_node_count(local_salt_client):
 
 
 def test_stacklight_services_replicas(local_salt_client):
+    # TODO
+    # change to docker:swarm:role:master ?
     salt_output = local_salt_client.cmd(
-        'docker:client:stack:monitoring',
+        'I@docker:client:stack:monitoring and I@prometheus:server',
         'cmd.run',
         ['docker service ls'],
-        expr_form='pillar')
+        expr_form='compound')
 
     if not salt_output:
-        pytest.skip("Docker replicas or \
-        docker:client:stack:monitoring pillar \
-        are not found on this environment.")
+        pytest.skip("docker:client:stack:monitoring or \
+        prometheus:server pillars are not found on this environment.")
 
     wrong_items = []
     for line in salt_output[salt_output.keys()[0]].split('\n'):
@@ -104,6 +99,7 @@ def test_stacklight_services_replicas(local_salt_client):
               {}'''.format(json.dumps(wrong_items, indent=4))
 
 
+@pytest.mark.usefixtures('check_prometheus')
 def test_prometheus_alert_count(local_salt_client):
     IP = utils.get_monitoring_ip('cluster_public_host')
     # keystone:server can return 3 nodes instead of 1
@@ -116,10 +112,6 @@ def test_prometheus_alert_count(local_salt_client):
          'grep -v "0 active"'.format(IP)],
         expr_form='pillar')
 
-    if not nodes_info:
-        pytest.skip("Prometheus server url or keystone:server \
-        pillar are not found on this environment.")
-
     result = nodes_info[nodes_info.keys()[0]].replace('</td>', '').replace(
         '<td><i class="icon-chevron-down"></i> <b>', '').replace('</b>', '')
     assert result == '', 'AlertManager page has some alerts! {}'.format(
@@ -128,14 +120,14 @@ def test_prometheus_alert_count(local_salt_client):
 
 def test_stacklight_containers_status(local_salt_client):
     salt_output = local_salt_client.cmd(
-        'docker:swarm:role:master',
+        'I@docker:swarm:role:master and I@prometheus:server',
         'cmd.run',
         ['docker service ps $(docker stack services -q monitoring)'],
-        expr_form='pillar')
+        expr_form='compound')
 
     if not salt_output:
-        pytest.skip("Docker or docker:swarm:role:master \
-        pillar are not found on this environment.")
+        pytest.skip("docker:swarm:role:master or prometheus:server \
+        pillars are not found on this environment.")
 
     result = {}
     # for old reclass models, docker:swarm:role:master can return
