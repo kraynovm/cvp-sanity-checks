@@ -65,8 +65,11 @@ test_mtu:
     "skipped_ifaces": ["bonding_masters", "lo", "veth", "tap", "cali", "qv", "qb", "br-int", "vxlan"]}
 # mask for interfaces to skip
 
+# specify what mcp version (tag) is deployed
 drivetrain_version: ''
-jenkins_test_job: ''
+
+# jenkins job to run during the test
+jenkins_test_job: 'git-mirror-downstream-mk-pipelines'
 
 # ntp test setting
 # this test may skip specific node (use fqdn)
