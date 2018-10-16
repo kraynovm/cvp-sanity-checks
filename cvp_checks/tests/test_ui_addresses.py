@@ -21,6 +21,7 @@ def test_ui_horizon(local_salt_client):
         IP[0])
 
 
+@pytest.mark.usefixtures('check_kibana')
 def test_ui_kibana(local_salt_client):
     IP = utils.get_monitoring_ip('stacklight_log_address')
     result = local_salt_client.cmd(
@@ -33,6 +34,7 @@ def test_ui_kibana(local_salt_client):
         'Kibana login page is not reachable on {} from ctl nodes'.format(IP)
 
 
+@pytest.mark.usefixtures('check_prometheus')
 def test_ui_prometheus(local_salt_client):
     IP = utils.get_monitoring_ip('stacklight_monitor_address')
     result = local_salt_client.cmd(
@@ -45,6 +47,7 @@ def test_ui_prometheus(local_salt_client):
         'Prometheus page is not reachable on {} from ctl nodes'.format(IP)
 
 
+@pytest.mark.usefixtures('check_prometheus')
 def test_ui_alert_manager(local_salt_client):
     IP = utils.get_monitoring_ip('stacklight_monitor_address')
     result = local_salt_client.cmd(
@@ -56,6 +59,7 @@ def test_ui_alert_manager(local_salt_client):
         'AlertManager page is not reachable on {} from ctl nodes'.format(IP)
 
 
+@pytest.mark.usefixtures('check_grafana')
 def test_ui_grafana(local_salt_client):
     IP = utils.get_monitoring_ip('stacklight_monitor_address')
     result = local_salt_client.cmd(

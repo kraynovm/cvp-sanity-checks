@@ -14,6 +14,39 @@ def nodes_in_group(request):
     return request.param
 
 
+@pytest.fixture(scope='session')
+def check_prometheus(local_salt_client):
+    salt_output = local_salt_client.cmd(
+        'prometheus:server',
+        'test.ping',
+        expr_form='pillar')
+    if not salt_output:
+        pytest.skip("Prometheus service or prometheus:server pillar \
+          are not found on this environment.")
+
+
+@pytest.fixture(scope='session')
+def check_kibana(local_salt_client):
+    salt_output = local_salt_client.cmd(
+        'kibana:server',
+        'test.ping',
+        expr_form='pillar')
+    if not salt_output:
+        pytest.skip("Kibana service or kibana:server pillar \
+          are not found on this environment.")
+
+
+@pytest.fixture(scope='session')
+def check_grafana(local_salt_client):
+    salt_output = local_salt_client.cmd(
+        'grafana:client',
+        'test.ping',
+        expr_form='pillar')
+    if not salt_output:
+        pytest.skip("Grafana service or grafana:client pillar \
+          are not found on this environment.")
+
+
 def pytest_namespace():
     return {'contrail': None}
 
